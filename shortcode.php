@@ -1,9 +1,11 @@
 <?php
 
+namespace herbie\plugin\shortcode;
+
 use Herbie\DI;
 use Herbie\Hook;
 use Herbie\Site;
-use herbie\sysplugin\shortcode\classes\Shortcode;
+use herbie\plugin\shortcode\classes\Shortcode;
 
 class ShortcodePlugin
 {

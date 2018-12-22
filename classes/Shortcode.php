@@ -9,7 +9,7 @@
  * file that was distributed with this source code.
  */
 
-namespace herbie\sysplugin\shortcode\classes;
+namespace herbie\plugin\shortcode\classes;
 
 class Shortcode
 {
