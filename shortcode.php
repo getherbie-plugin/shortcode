@@ -229,14 +229,18 @@ class ShortcodePlugin
                     if (file_exists($paths[$path].'/.layouts/'.$layout)) {
                         $layout = $path.'/.layouts/'.$layout;
                     }
-                    $twig->getEnvironment()->getExtension('herbie')->setPage($block);
+                    $twig->getEnvironment()
+                        ->getExtension('herbie\\plugin\\twig\\classes\\HerbieExtension')
+                        ->setPage($block);
                     $return .= $twig->render($layout, ['block' => $block]);
                 }
                 $return .= "\n";
             }
 
             // restore page
-            $twig->getEnvironment()->getExtension('herbie')->setPage($page);
+            $twig->getEnvironment()
+                ->getExtension('herbie\\plugin\\twig\\classes\\HerbieExtension')
+                ->setPage($page);
             DI::set('Page', $page);
 
             return trim($return);
