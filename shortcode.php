@@ -2,19 +2,19 @@
 
 namespace herbie\plugin\shortcode;
 
-use Herbie\DI;
-use Herbie\Hook;
 use Herbie\Site;
 use herbie\plugin\shortcode\classes\Shortcode;
+use Zend\EventManager\EventInterface;
+use Zend\EventManager\EventManagerInterface;
 
-class ShortcodePlugin
+class ShortcodePlugin extends \Herbie\Plugin
 {
     protected $config;
     protected $shortcode;
 
-    public function __construct()
+    protected function init()
     {
-        $this->config = DI::get('Config');
+        $this->config = $this->herbie->getConfig();
         $tags = $this->config->get('plugins.config.shortcode', []);
 
         // Feature 20160224: Define simple shortcodes also in config.yml
@@ -23,11 +23,12 @@ class ShortcodePlugin
         }
         
         $this->shortcode = new Shortcode($tags);
-        DI::set('Shortcode', $this->shortcode);
+        $this->herbie->setShortcode($this->shortcode);
     }
 
-    public function install()
+    public function attach(EventManagerInterface $events, $priority = 1)
     {
+        $this->init();
         $this->addDateTag();
         $this->addPageTag();
         $this->addSiteTag();
@@ -41,14 +42,16 @@ class ShortcodePlugin
         $this->addListingTag();
         $this->addBlocksTag();
 
-        Hook::trigger(Hook::ACTION, 'addShortcode', $this->shortcode);
+        $events->trigger('addShortcode', $this->shortcode);
 
-        Hook::attach('renderContent', [$this, 'renderContent']);
+        $events->attach('renderContent', [$this, 'renderContent'], $priority);
     }
 
-    public function renderContent($segment)
+    public function renderContent(EventInterface $event)
     {
-        return $this->shortcode->parse($segment);
+        $segment = $event->getTarget();
+        $parsed = $this->shortcode->parse($segment);
+        $segment->set($parsed);
     }
 
     public function getShortcodeObject()
@@ -90,7 +93,7 @@ class ShortcodePlugin
                 return;
             }
             $name = ltrim($options[0], '.');
-            $field = DI::get('Page')->{$name};
+            $field = $this->herbie->getPage()->{$name};
             if (is_array($field)) {
                 $delim = empty($options['join']) ? ' ' : $options['join'];
                 return join($delim, $field);
@@ -106,7 +109,7 @@ class ShortcodePlugin
                 return;
             }
             $name = ltrim($options[0], '.');
-            $site = new Site();
+            $site = new Site($this->herbie);
             $field = $site->{$name};
             if (is_array($field)) {
                 $delim = empty($options['join']) ? ' ' : $options['join'];
@@ -137,7 +140,7 @@ class ShortcodePlugin
                 unset($params['path']);
             }
 
-            return DI::get('Twig')->render($options['path'], $params);
+            return $this->herbie->getTwig()->render($options['path'], $params);
         });
     }
 
@@ -154,7 +157,7 @@ class ShortcodePlugin
                 'pagination' => true
             ], $options);
 
-            $collection = DI::get('Menu\Page\Collection');
+            $collection = $this->herbie->getMenuPageCollection();
 
             if (!empty($options['filter'])) {
                 list($field, $value) = explode('|', $options['filter']);
@@ -178,7 +181,7 @@ class ShortcodePlugin
             $pagination = new \Herbie\Pagination($collection);
             $pagination->setLimit($options['limit']);
 
-            return DI::get('Twig')->render($options['path'], ['pagination' => $pagination]);
+            return $this->getTwig()->render($options['path'], ['pagination' => $pagination]);
         });
     }
 
@@ -187,7 +190,7 @@ class ShortcodePlugin
         $this->add('blocks', function ($options) {
 
             $options = array_merge([
-                'path' => DI::get('Page')->getDefaultBlocksPath(),
+                'path' => $this->getPage()->getDefaultBlocksPath(),
                 'sort' => '',
                 'shuffle' => 'false'
             ], (array)$options);
@@ -195,7 +198,7 @@ class ShortcodePlugin
             // collect pages
             $extensions = $this->config->get('pages.extensions', []);
             $path = $options['path'];
-            $paths = [$path => DI::get('Alias')->get($path)];
+            $paths = [$path => $this->getAlias()->get($path)];
             $pageBuilder = new Herbie\Menu\Page\Builder($paths, $extensions);
             $collection = $pageBuilder->buildCollection();
 
@@ -208,18 +211,18 @@ class ShortcodePlugin
                 $collection = $collection->shuffle();
             }
 
-            $twig = DI::get('Twig');
-            $extension = DI::get('Config')->get('layouts.extension');
+            $twig = $this->getTwig();
+            $extension = $this->getConfig()->get('layouts.extension');
 
             // store page
-            $page = DI::get('Page');
+            $page = $this->getPage();
 
             $return = '';
 
             foreach ($collection as $i => $item) {
                 $block = Herbie\Page::create($item->path);
 
-                DI::set('Page', $block);
+                $this->herbie->setPage($block);
 
                 if (empty($block->layout)) {
                     $return .= $twig->renderPageSegment(0, $block);
@@ -241,7 +244,7 @@ class ShortcodePlugin
             $twig->getEnvironment()
                 ->getExtension('herbie\\plugin\\twig\\classes\\HerbieExtension')
                 ->setPage($page);
-            DI::set('Page', $page);
+            $this->herbie->setPage($page);
 
             return trim($return);
         });
@@ -250,7 +253,7 @@ class ShortcodePlugin
     protected function addTwigTag()
     {
         $this->add('twig', function ($options, $content) {
-            return DI::get('Twig')->renderString($content);
+            return $this->herbie->getTwig()->renderString($content);
         });
     }
 
@@ -307,7 +310,7 @@ class ShortcodePlugin
 
             // Interner Link
             if (strpos($options['href'], 'http') !== 0) {
-                $options['href'] = DI::get('Url\UrlGenerator')->generate($options['href']);
+                $options['href'] = $this->herbie->getUrlGenerator()->generate($options['href']);
             }
 
             $replace = [
@@ -422,5 +425,3 @@ class ShortcodePlugin
         return trim($attributes);
     }
 }
-
-(new ShortcodePlugin())->install();
