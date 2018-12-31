@@ -4,6 +4,7 @@ namespace herbie\plugin\shortcode;
 
 use Herbie\Site;
 use herbie\plugin\shortcode\classes\Shortcode;
+use Herbie\StringValue;
 use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManagerInterface;
 
@@ -44,14 +45,18 @@ class ShortcodePlugin extends \Herbie\Plugin
 
         $events->trigger('addShortcode', $this->shortcode);
 
-        $events->attach('renderContent', [$this, 'renderContent'], $priority);
+        $events->attach('renderContent', [$this, 'onRenderContent'], $priority);
     }
 
-    public function renderContent(EventInterface $event)
+    /**
+     * @param EventInterface $event
+     */
+    public function onRenderContent(EventInterface $event)
     {
-        $segment = $event->getTarget();
-        $parsed = $this->shortcode->parse($segment);
-        $segment->set($parsed);
+        /** @var StringValue $stringValue */
+        $stringValue = $event->getTarget();
+        $parsed = $this->shortcode->parse($stringValue->get());
+        $stringValue->set($parsed);
     }
 
     public function getShortcodeObject()
