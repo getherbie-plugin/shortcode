@@ -162,7 +162,7 @@ class ShortcodePlugin extends \Herbie\Plugin
                 'pagination' => true
             ], $options);
 
-            $collection = $this->herbie->getMenuPageCollection();
+            $collection = $this->herbie->getMenuList();
 
             if (!empty($options['filter'])) {
                 list($field, $value) = explode('|', $options['filter']);
@@ -179,7 +179,7 @@ class ShortcodePlugin extends \Herbie\Plugin
             }
 
             // filter pages with empty title
-            $collection = $collection->filter(function (\Herbie\Menu\Page\Item $page) {
+            $collection = $collection->filter(function (\Herbie\Menu\MenuItem $page) {
                 return !empty($page->title);
             });
 
@@ -204,7 +204,7 @@ class ShortcodePlugin extends \Herbie\Plugin
             $extensions = $this->config->get('pages.extensions', []);
             $path = $options['path'];
             $paths = [$path => $this->getAlias()->get($path)];
-            $pageBuilder = new Herbie\Menu\Page\Builder($paths, $extensions);
+            $pageBuilder = new Herbie\Menu\Builder($paths, $extensions);
             $collection = $pageBuilder->buildCollection();
 
             if (!empty($options['sort'])) {
