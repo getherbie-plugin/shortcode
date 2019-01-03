@@ -10,26 +10,28 @@ use Zend\EventManager\EventManagerInterface;
 
 class ShortcodePlugin extends \Herbie\Plugin
 {
+    protected $events;
     protected $config;
     protected $shortcode;
 
-    protected function init()
-    {
-        $this->config = $this->herbie->getConfig();
-        $tags = $this->config->get('plugins.config.shortcode', []);
-
-        // Feature 20160224: Define simple shortcodes also in config.yml
-        foreach ($tags as $tag => $_callable) {
-            $tags[$tag] = create_function('$atts, $content', $_callable.';');
-        }
-        
-        $this->shortcode = new Shortcode($tags);
-        $this->herbie->setShortcode($this->shortcode);
-    }
-
+    /**
+     * @param EventManagerInterface $events
+     * @param int $priority
+     */
     public function attach(EventManagerInterface $events, $priority = 1)
     {
+        $this->events = $events;
+        $events->attach('onPluginsInitialized', [$this, 'onPluginsInitialized'], $priority);
+        $events->attach('onRenderContent', [$this, 'onRenderContent'], $priority);
+    }
+
+    /**
+     * @param EventInterface $event
+     */
+    public function onPluginsInitialized(EventInterface $event)
+    {
         $this->init();
+
         $this->addDateTag();
         $this->addPageTag();
         $this->addSiteTag();
@@ -43,9 +45,8 @@ class ShortcodePlugin extends \Herbie\Plugin
         $this->addListingTag();
         $this->addBlocksTag();
 
-        $events->trigger('addShortcode', $this->shortcode);
-
-        $events->attach('renderContent', [$this, 'onRenderContent'], $priority);
+        $this->events->trigger('onAddShortcode', $this->shortcode); // TODO do we need this event?
+        $this->events->trigger('onShortcodeInitialized', $this->shortcode);
     }
 
     /**
@@ -57,6 +58,20 @@ class ShortcodePlugin extends \Herbie\Plugin
         $stringValue = $event->getTarget();
         $parsed = $this->shortcode->parse($stringValue->get());
         $stringValue->set($parsed);
+    }
+
+    protected function init()
+    {
+        $this->config = $this->herbie->getConfig();
+        $tags = $this->config->get('plugins.config.shortcode', []);
+
+        // Feature 20160224: Define simple shortcodes also in config.yml
+        foreach ($tags as $tag => $_callable) {
+            $tags[$tag] = create_function('$atts, $content', $_callable.';');
+        }
+
+        $this->shortcode = new Shortcode($tags);
+        $this->herbie->setShortcode($this->shortcode);
     }
 
     public function getShortcodeObject()
