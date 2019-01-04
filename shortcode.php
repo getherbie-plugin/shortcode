@@ -11,7 +11,6 @@ use Zend\EventManager\EventManagerInterface;
 class ShortcodePlugin extends \Herbie\Plugin
 {
     protected $events;
-    protected $config;
     protected $shortcode;
 
     /**
@@ -62,8 +61,7 @@ class ShortcodePlugin extends \Herbie\Plugin
 
     protected function init()
     {
-        $this->config = $this->herbie->getConfig();
-        $tags = $this->config->get('plugins.config.shortcode', []);
+        $tags = $this->getConfig()->get('plugins.config.shortcode', []);
 
         // Feature 20160224: Define simple shortcodes also in config.yml
         foreach ($tags as $tag => $_callable) {
@@ -71,7 +69,7 @@ class ShortcodePlugin extends \Herbie\Plugin
         }
 
         $this->shortcode = new Shortcode($tags);
-        $this->herbie->setShortcode($this->shortcode);
+        $this->setShortcode($this->shortcode);
     }
 
     public function getShortcodeObject()
@@ -113,7 +111,7 @@ class ShortcodePlugin extends \Herbie\Plugin
                 return;
             }
             $name = ltrim($options[0], '.');
-            $field = $this->herbie->getPage()->{$name};
+            $field = $this->getPage()->{$name};
             if (is_array($field)) {
                 $delim = empty($options['join']) ? ' ' : $options['join'];
                 return join($delim, $field);
@@ -129,8 +127,14 @@ class ShortcodePlugin extends \Herbie\Plugin
                 return;
             }
             $name = ltrim($options[0], '.');
-            $site = new Site($this->herbie);
-            $field = $site->{$name};
+            $site = [
+                $this->getConfig(),
+                $this->getDataRepository(),
+                $this->getMenuList(),
+                $this->getMenuRootPath(),
+                $this->getMenuTree()
+            ];
+            $field = $site[$name];
             if (is_array($field)) {
                 $delim = empty($options['join']) ? ' ' : $options['join'];
                 return join($delim, $field);
@@ -160,7 +164,7 @@ class ShortcodePlugin extends \Herbie\Plugin
                 unset($params['path']);
             }
 
-            return $this->herbie->getTwig()->render($options['path'], $params);
+            return $this->getTwig()->render($options['path'], $params);
         });
     }
 
@@ -177,7 +181,7 @@ class ShortcodePlugin extends \Herbie\Plugin
                 'pagination' => true
             ], $options);
 
-            $collection = $this->herbie->getMenuList();
+            $collection = $this->getMenuList();
 
             if (!empty($options['filter'])) {
                 list($field, $value) = explode('|', $options['filter']);
@@ -216,7 +220,7 @@ class ShortcodePlugin extends \Herbie\Plugin
             ], (array)$options);
 
             // collect pages
-            $extensions = $this->config->get('pages.extensions', []);
+            $extensions = $this->getConfig()->get('pages.extensions', []);
             $path = $options['path'];
             $paths = [$path => $this->getAlias()->get($path)];
             $pageBuilder = new Herbie\Menu\Builder($paths, $extensions);
@@ -242,7 +246,7 @@ class ShortcodePlugin extends \Herbie\Plugin
             foreach ($collection as $i => $item) {
                 $block = Herbie\Page::create($item->path);
 
-                $this->herbie->setPage($block);
+                $this->setPage($block);
 
                 if (empty($block->layout)) {
                     $return .= $twig->renderPageSegment(0, $block);
@@ -264,7 +268,7 @@ class ShortcodePlugin extends \Herbie\Plugin
             $twig->getEnvironment()
                 ->getExtension('herbie\\plugin\\twig\\classes\\HerbieExtension')
                 ->setPage($page);
-            $this->herbie->setPage($page);
+            $this->setPage($page);
 
             return trim($return);
         });
@@ -273,7 +277,7 @@ class ShortcodePlugin extends \Herbie\Plugin
     protected function addTwigTag()
     {
         $this->add('twig', function ($options, $content) {
-            return $this->herbie->getTwig()->renderString($content);
+            return $this->getTwig()->renderString($content);
         });
     }
 
@@ -330,7 +334,7 @@ class ShortcodePlugin extends \Herbie\Plugin
 
             // Interner Link
             if (strpos($options['href'], 'http') !== 0) {
-                $options['href'] = $this->herbie->getUrlGenerator()->generate($options['href']);
+                $options['href'] = $this->getUrlGenerator()->generate($options['href']);
             }
 
             $replace = [
@@ -361,7 +365,7 @@ class ShortcodePlugin extends \Herbie\Plugin
 
             // Interne Ressource
             if (strpos($options['src'], 'http') !== 0) {
-                $options['src'] = $this->config->get('web.url') . '/' . $options['src'];
+                $options['src'] = $this->getConfig()->get('web.url') . '/' . $options['src'];
             }
 
             $replace = [
