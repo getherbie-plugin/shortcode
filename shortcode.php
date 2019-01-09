@@ -3,6 +3,8 @@
 namespace herbie\plugin\shortcode;
 
 use Herbie\Config;
+use Herbie\Event;
+use Herbie\EventManager;
 use Herbie\Menu\MenuList;
 use Herbie\Menu\MenuTree;
 use Herbie\Menu\MenuTrail;
@@ -18,15 +20,13 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-use Zend\EventManager\EventInterface;
-use Zend\EventManager\EventManagerInterface;
 
 class ShortcodePlugin implements PluginInterface, MiddlewareInterface
 {
     private $config;
 
     /**
-     * @var EventManagerInterface
+     * @var EventManager
      */
     private $events;
 
@@ -86,10 +86,10 @@ class ShortcodePlugin implements PluginInterface, MiddlewareInterface
     }
 
     /**
-     * @param EventManagerInterface $events
+     * @param EventManager $events
      * @param int $priority
      */
-    public function attach(EventManagerInterface $events, $priority = 1): void
+    public function attach(EventManager $events, int $priority = 1): void
     {
         $this->events = $events;
         $events->attach('onPluginsInitialized', [$this, 'onPluginsInitialized'], $priority);
@@ -97,9 +97,9 @@ class ShortcodePlugin implements PluginInterface, MiddlewareInterface
     }
 
     /**
-     * @param EventInterface $event
+     * @param Event $event
      */
-    public function onPluginsInitialized(EventInterface $event)
+    public function onPluginsInitialized(Event $event)
     {
         $this->init();
 
@@ -121,11 +121,10 @@ class ShortcodePlugin implements PluginInterface, MiddlewareInterface
     }
 
     /**
-     * @param EventInterface $event
+     * @param Event $event
      */
-    public function onRenderContent(EventInterface $event)
+    public function onRenderContent(Event $event)
     {
-        #echo __METHOD__ . "<br>";
         /** @var StringValue $stringValue */
         $stringValue = $event->getTarget();
         $parsed = $this->shortcode->parse($stringValue->get());
