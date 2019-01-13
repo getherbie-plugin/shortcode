@@ -353,9 +353,8 @@ class ShortcodePlugin implements PluginInterface, MiddlewareInterface
     private function addTwigTag()
     {
         $this->add('twig', function ($options, $content) {
-            $stringValue = new StringValue($content);
-            $this->events->trigger('onRenderString', $stringValue);
-            return $stringValue->get();
+            $rendered = $this->twigRenderer->renderString($content);
+            return $rendered;
         });
     }
 
